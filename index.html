@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Influencer Life Expectancy</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #1f2937;
+            --text-secondary: #6b7280;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+
+            /* Category Colors */
+            --color-low-meat: #10b981;
+            /* Emerald 500 */
+            --color-high-meat: #ef4444;
+            /* Red 500 */
+            --color-low-meat-light: #d1fae5;
+            --color-high-meat-light: #fee2e2;
+
+            --font-family: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-section,
+        .chart-section:not(.half-width) {
+            grid-column: 1 / -1;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #374151;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            /* Default height */
+            position: relative;
+        }
+
+        /* Tooltip Styles */
+        .tooltip {
+            position: absolute;
+            background: #1f2937;
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 250px;
+        }
+
+        .tooltip strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Summary Stats Styles */
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stat-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border-radius: 8px;
+            background-color: #f9fafb;
+        }
+
+        .stat-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .stat-count {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-right: 1rem;
+        }
+
+        /* Axis Styles */
+        .axis path,
+        .axis line {
+            stroke: #e5e7eb;
+        }
+
+        .axis text {
+            fill: #6b7280;
+            font-size: 12px;
+        }
+
+        .grid line {
+            stroke: #f3f4f6;
+            stroke-dasharray: 4;
+        }
+
+        .people-section {
+            grid-column: 1 / -1;
+        }
+
+        .people-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            min-width: 250px;
+            font-family: var(--font-family);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            background: #f3f4f6;
+            padding: 0.25rem;
+            border-radius: 6px;
+        }
+
+        .filter-btn {
+            padding: 0.4rem 0.8rem;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            color: var(--text-color);
+        }
+
+        .filter-btn.active {
+            background: white;
+            color: var(--text-color);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .people-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .person-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .person-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .person-card.highlight {
+            animation: highlight-pulse 2s ease-out;
+        }
+
+        @keyframes highlight-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+                border-color: #3b82f6;
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+                border-color: #3b82f6;
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+                border-color: var(--border-color);
+            }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .person-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #111827;
+        }
+
+        .person-age {
+            background: #f3f4f6;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .card-category {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 99px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .cat-low-meat {
+            background: var(--color-low-meat-light);
+            color: #065f46;
+            /* Darker emerald */
+        }
+
+        .cat-high-meat {
+            background: var(--color-high-meat-light);
+            color: #991b1b;
+            /* Darker red */
+        }
+
+        .card-details {
+            font-size: 0.9rem;
+            color: #4b5563;
+            line-height: 1.5;
+        }
+
+        .card-meta {
+            margin-top: auto;
+            padding-top: 0.75rem;
+            border-top: 1px solid #f3f4f6;
+            font-size: 0.8rem;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+
+        /* Collapsible Section Styles */
+        details {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        summary {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            color: #374151;
+            background-color: #f9fafb;
+            list-style: none;
+            /* Remove default triangle */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+        }
+
+        summary:hover {
+            background-color: #f3f4f6;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+            /* Hide default triangle in WebKit */
+        }
+
+        summary::after {
+            content: '+';
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1;
+        }
+
+        details[open] summary::after {
+            content: '-';
+        }
+
+        .details-content {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            line-height: 1.6;
+            color: #4b5563;
+        }
+
+        .details-content h3 {
+            font-size: 1.1rem;
+            color: #1f2937;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .details-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .details-content ul {
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .details-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Footer & Disclaimer Styles */
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .disclaimer {
+            background-color: #fffbeb;
+            /* Amber 50 */
+            border: 1px solid #fcd34d;
+            /* Amber 300 */
+            color: #92400e;
+            /* Amber 800 */
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            text-align: left;
+        }
+
+        .footer-links {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-color);
+            text-decoration: underline;
+        }
+
+        /* Modal Styles */
+        dialog {
+            padding: 0;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            max-width: 500px;
+            width: 90%;
+            background: white;
+        }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: #1f2937;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            line-height: 1;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background-color: #f3f4f6;
+            color: var(--text-color);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: #374151;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: var(--font-family);
+            font-size: 0.95rem;
+            background-color: #fff;
+            color: var(--text-color);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .btn-secondary {
+            background: white;
+            border: 1px solid var(--border-color);
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            border: 1px solid #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Health Influencer Life Expectancy</h1>
+            <p class="subtitle">Does diet affect longevity? A data visualization analysis.</p>
+        </header>
+
+        <details>
+            <summary>About & Methodology</summary>
+            <div class="details-content">
+                <h3>Selection Criteria</h3>
+                <p>This dataset includes prominent health influencers, nutritionists, and bodybuilders who have authored
+                    books, had significant public followings, or made notable contributions to nutritional science. The
+                    list focuses on individuals who have passed away to analyze their life expectancy.</p>
+
+                <h3>Categorization Logic</h3>
+                <p>To simplify the analysis, diets were grouped into two broad categories:</p>
+                <ul>
+                    <li><strong>Low Meat:</strong> Includes Vegans, Vegetarians, Plant-Based dieters, and those
+                        following Balanced/Whole Foods or Mediterranean diets where meat is not the primary focus.</li>
+                    <li><strong>High Meat:</strong> Includes Carnivore, Paleo, Keto, Low-Carb, and Bodybuilding diets
+                        where animal protein is a central component.</li>
+                </ul>
+
+                <h3>Data Processing</h3>
+                <p>Individuals who died before the age of 30 were excluded from the main visualizations to remove
+                    outliers that might not be diet-related (e.g., accidents or congenital conditions), although they
+                    may still appear in the full list. Ages were verified against public records and obituaries.</p>
+            </div>
+        </details>
+
+        <div class="dashboard-grid">
+            <div class="card summary-section">
+                <h2>Summary Statistics</h2>
+                <div id="summary-stats" class="stats-container"></div>
+            </div>
+
+            <div class="card chart-section">
+                <h2>Life Expectancy by Diet (Bee Swarm)</h2>
+                <div id="beeswarm-chart" class="chart-container"></div>
+            </div>
+
+            <div class="card chart-section half-width">
+                <h2>Age Distribution (Box Plot)</h2>
+                <div id="boxplot-chart" class="chart-container"></div>
+            </div>
+
+            <div class="card chart-section half-width">
+                <h2>Survival Curve</h2>
+                <div id="survival-chart" class="chart-container"></div>
+            </div>
+
+            <div class="card people-section">
+                <div class="people-header">
+                    <h2>Influencer Details</h2>
+                    <div class="controls">
+                        <input type="text" id="search-input" placeholder="Search name, diet, or details..."
+                            class="search-input">
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="Low Meat">Low Meat</button>
+                            <button class="filter-btn" data-filter="High Meat">High Meat</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="people-grid" class="people-grid"></div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="disclaimer">
+                <strong>Disclaimer:</strong> This website is for informational and educational purposes only. It is not
+                intended to be medical advice. The data presented here is based on public information and may not be
+                complete or entirely accurate. Correlation does not imply causation. Life expectancy is influenced by a
+                multitude of factors including genetics, lifestyle, access to healthcare, and socioeconomic status, not
+                just diet.
+            </div>
+            <p>&copy; 2025 Health Influencer Analysis. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="#">GitHub Repository</a>
+                <button id="suggest-btn" class="filter-btn" style="font-size: 0.9rem;">Suggest an Influencer</button>
+                <a href="#">Contact</a>
+            </div>
+        </footer>
+    </div>
+
+    <dialog id="suggestion-modal">
+        <div class="modal-header">
+            <h2>Suggest an Influencer</h2>
+            <button class="close-btn" id="close-modal" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form action="https://formspree.io/f/xldznjdp" method="POST">
+                <div class="form-group">
+                    <label for="name">Influencer Name *</label>
+                    <input type="text" id="name" name="name" required placeholder="e.g. Jack LaLanne">
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category" name="category">
+                        <option value="Low Meat">Low Meat / Plant-Based</option>
+                        <option value="High Meat">High Meat / Animal-Based</option>
+                        <option value="Bodybuilder">Bodybuilder / Fitness</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="source">Link / Source *</label>
+                    <input type="url" id="source" name="source" required placeholder="Wikipedia, Article, etc.">
+                </div>
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" placeholder="Any details about their diet or life..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Suggestion</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <script>
+        const rawData =
+            [
+                {
+                    "name": "Adelle Davis",
+                    "category": "Balanced / High Dairy",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Most popular nutritionist in America during the middle 1900s, sold ten million books.",
+                    "diet": "Recipes often derived most calories from **butter, sugar, and white flour**. Advocated a whole quart of **milk** a day for adults.",
+                    "dietDetails": "Advocated for natural, unprocessed foods (whole grains, fresh vegetables) and vitamin supplements. Recommended minimizing alcohol consumption, viewing it as an addictive substance.",
+                    "lifestyle": null,
+                    "age_at_death": 70,
+                    "cause_of_death": "Cancer"
+                },
+                {
+                    "name": "Agnes Fay Morgan",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Nutrition professor at UC Berkeley who advised Robert Cameron.",
+                    "diet": "Had been on the equivalent of **The Drinking Man's Diet** (around 60 grams of carbohydrates daily) for 50 years. Adamant about consuming 60 grams of carbohydrates daily to stay healthy.",
+                    "dietDetails": "Specific daily details are scarce. She was a pioneer in nutrition research (vitamins, processed foods). Researched vitamins in wine, but personal alcohol consumption is not documented.",
+                    "lifestyle": null,
+                    "age_at_death": 84,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Alvenia Fulton",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Feisty nutritionist who influenced Dick Gregory to go vegan and co-wrote his cookbook.",
+                    "diet": "Advocated healthy eating and **vegetarianism**. Practiced **intermittent fasting** once a week.",
+                    "dietDetails": "Advocated for vegetarianism, raw foods, and juicing (especially cabbage juice). Practiced therapeutic fasting. No mention of alcohol consumption, likely avoided.",
+                    "lifestyle": null,
+                    "age_at_death": 92,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Ancel Keys",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Popularized the **Mediterranean diet** through the massive Seven Countries Study.",
+                    "diet": "Promoted the Mediterranean diet, which was low in saturated fat and famous for **olive oil**. His study's diet was mainly **vegetarian** when it began. Promoted **cheese and wine**.",
+                    "dietDetails": "Popularized the Mediterranean Diet. Recommended moderate alcohol consumption, preferably red wine, as part of the diet.",
+                    "lifestyle": null,
+                    "age_at_death": 100,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Arnold De Vries",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote *Primitive Man and His Food* in 1952.",
+                    "diet": "Not specified, but context is tied to low carb/ancestral diets.",
+                    "dietDetails": "Initially advocated a fruitarian raw food diet, later shifted to a Paleolithic diet (animal products). No specific information on alcohol consumption.",
+                    "lifestyle": null,
+                    "age_at_death": 74,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Barry Groves",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Believed that most expert nutritional advice was wrong and humans are designed to eat meat. Wrote *Eat Fat, Get Thin*.",
+                    "diet": "**Meat-focused** diet, advocated eating fat.",
+                    "dietDetails": "Advocated a high-fat, low-carb diet (60-70% fat). Recommended high-protein breakfasts and real dairy. Allowed wine with dinner.",
+                    "lifestyle": null,
+                    "age_at_death": 77,
+                    "cause_of_death": "Heart attack"
+                },
+                {
+                    "name": "Benjamin Spock",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Example of a long-lived figure found during the search for low carbers. Became a household name.",
+                    "diet": "**Vegan**. Famously said all children over two years old should be vegan.",
+                    "dietDetails": "Shifted to a plant-based/vegan diet later in life. Recommended veganism for children. Disapproved of alcohol for teenagers.",
+                    "lifestyle": null,
+                    "age_at_death": 94,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Bernarr Macfadden",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "America's godfather of fitness, known for publicity stunts (like parachuting at 83).",
+                    "diet": "Advocated **whole foods**.",
+                    "dietDetails": "Promoted natural foods (fruits, vegetables, whole grains), often two meals a day, and fasting. Strictly against alcohol.",
+                    "lifestyle": "Distrusted doctors.",
+                    "age_at_death": 87,
+                    "cause_of_death": "Urinary tract infection (refused treatment)"
+                },
+                {
+                    "name": "Blake Donaldson",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote the carnivore diet book *Strong Medicine* in 1961.",
+                    "diet": "**Carnivore diet**. Strict about patients stopping eating flour.",
+                    "dietDetails": "Advocated a meat-only diet (fatty meat, water, coffee). Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 73,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Bob Harper",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Biggest Loser trainer whose heart attack and revival fascinated the speaker.",
+                    "diet": "First life: **Carbs were the devil**. Second life (after consulting scientists): lives on **super carbs**.",
+                    "dietDetails": "Initially strict weight loss diet (no alcohol), later shifted to a Mediterranean-style diet allowing moderate alcohol (e.g., a glass of wine).",
+                    "lifestyle": null,
+                    "age_at_death": "N/A (Revived)",
+                    "cause_of_death": "Heart attack"
+                },
+                {
+                    "name": "Boyd Eaton",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Paleo diet pioneer, wrote *The Paleo Prescription*.",
+                    "diet": "**Paleo diet** (implied).",
+                    "dietDetails": "Father of the Paleo diet. Follows a 'weak form' allowing some grains/dairy. Enjoys red wine in moderation.",
+                    "lifestyle": null,
+                    "age_at_death": 82,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Carl Bomberg",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Editor of *Health and Hygiene Magazine*. Wrote *Diet and Die* (1935), criticizing fad diets.",
+                    "diet": "Critic of fad diets, including vegetarianism.",
+                    "dietDetails": "No specific diet details found.",
+                    "lifestyle": null,
+                    "age_at_death": 75,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Carlton Fredericks",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Good friend and mentor to Dr. Atkins, wrote a very popular low carb diet book in 1965.",
+                    "diet": "**Low carb** dieting.",
+                    "dietDetails": "Advocated low-carb and sugar avoidance. Alcohol advice varies, generally suggesting moderation or avoidance.",
+                    "lifestyle": "Hosted a syndicated radio show for 30 years on low carb dieting.",
+                    "age_at_death": 76,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Charles Atlas",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "One of the most famous men in the world, strongman performer.",
+                    "diet": "Balanced diet. Drank a lot of **milk** with fruit. Developed diabetes in his 70s and doctors put him on a **low carb diet**.",
+                    "dietDetails": "Famous for drinking 5 quarts of milk daily. Ate whole foods. Mentioned personal enjoyment of drinking and smoking, though not part of his program.",
+                    "lifestyle": null,
+                    "age_at_death": 80,
+                    "cause_of_death": "Heart attack (Son claimed low carb diet clogged his arteries)"
+                },
+                {
+                    "name": "Charles Poliquin",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Revered strength coach and author of almost a dozen books on fitness and health.",
+                    "diet": "**High protein** (claimed to eat 2 to 3 kilograms of mean protein per day); advocated against soy.",
+                    "dietDetails": "Promoted 'Meat and Nuts Breakfast' and carb timing. Advised against alcohol for athletes, but allowed red wine if necessary.",
+                    "lifestyle": null,
+                    "age_at_death": 57,
+                    "cause_of_death": "Apparently of a **heart attack**"
+                },
+                {
+                    "name": "Charlotte Gerson",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Carried on the Gerson Therapy tradition of her father, Max Gerson.",
+                    "diet": "**Gerson Therapy** (vegan diet).",
+                    "dietDetails": "Promoted Gerson Therapy (vegan, fresh juices). Strictly prohibits alcohol.",
+                    "lifestyle": "Frequent coffee enemas.",
+                    "age_at_death": 96,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Dallas McCarver",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Popular bodybuilder.",
+                    "diet": "**High carb, low fat vegan** diet.",
+                    "dietDetails": "Starch-based, low-fat vegan diet. Discourages alcohol (though acknowledges heart benefits of moderation).",
+                    "lifestyle": null,
+                    "age_at_death": 26,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Daniel Posey",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Bodybuilder trainer noted by the speaker.",
+                    "diet": "Trainer stated he wouldn't eat any **carbohydrates at all** (very high protein implied).",
+                    "dietDetails": "No specific diet details found.",
+                    "lifestyle": null,
+                    "age_at_death": 23,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Dennis Burke",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Great scientist and surgeon. Famous for discovering the role of **fiber** in preventing diseases.",
+                    "diet": "Advocate for fiber.",
+                    "dietDetails": "No specific diet details found.",
+                    "lifestyle": null,
+                    "age_at_death": 82,
+                    "cause_of_death": "Stroke"
+                },
+                {
+                    "name": "Dick Gregory",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Famous comedian and Hollywood star who promoted his vegan diet widely.",
+                    "diet": "**Whole plant vegan** diet. Went vegan fearing a predisposition to heart disease.",
+                    "dietDetails": "Advocated 'Bahamian Diet' (raw foods, fasting, special juices). Strictly against alcohol and other vices.",
+                    "lifestyle": null,
+                    "age_at_death": 84,
+                    "cause_of_death": "Heart disease"
+                },
+                {
+                    "name": "Donald Watson",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Founder of the British Vegan Society; coined the term \"vegan\".",
+                    "diet": "**Vegan**.",
+                    "dietDetails": "Strict vegan diet. Coined the term 'vegan'. Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 95,
+                    "cause_of_death": "Apparently died of a **heart attack**"
+                },
+                {
+                    "name": "Dr. Alfred Pennington",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "The man who inspired Dr. Atkins; published respected papers on weight loss in the 50s.",
+                    "diet": "**Low carb** steak and potato diet (eat all the steak you want; easy on potatoes, rice, fruit; no sugar/flour).",
+                    "dietDetails": "Advocated a low-carb, high-fat diet (meat/fat focused). Strictly prohibited alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 56,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Dr. Atkins",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "One of the most polarizing figures; sold 15 million books championing a very low-carb diet.",
+                    "diet": "Very **low-carb diet**.",
+                    "dietDetails": "Famous for the Atkins Diet (low-carb). Alcohol prohibited in Induction phase, allowed in moderation later (spirits, dry wine).",
+                    "lifestyle": null,
+                    "age_at_death": 73,
+                    "cause_of_death": "Controversial: possibly a heart attack or slipping on ice and banging his head."
+                },
+                {
+                    "name": "Dr. David Servan-Schreiber",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Neuroscientist who wrote the best-selling book *Anti Cancer* after being diagnosed with brain cancer.",
+                    "diet": "Ate a standard American diet (**junk food**, cheeseburgers).",
+                    "dietDetails": "Running advocate. Ate an unhealthy diet (fast food, sugar, steak). Drank beer.",
+                    "lifestyle": "Anti-cancer lifestyle.",
+                    "age_at_death": 50,
+                    "cause_of_death": "Brain cancer"
+                },
+                {
+                    "name": "Dr. Ephraim Cutter",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "A carnivore sought out by the speaker as an example of a long-lived low-carber. Harvard educated doctor who wrote a low carb book in 1908.",
+                    "diet": "**Carnivore**. Prescribed a strict **animal diet** to cancer patients and was critical of vegetarianism.",
+                    "dietDetails": "Advocated a meat-only diet for health. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 84,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Dr. Franklin Bicknell",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Low carb diet book author (*The English Complaint*) that sold well in 1952.",
+                    "diet": "Wrote *Eat Fat and Grow Slim*.",
+                    "dietDetails": "Advocated high-fat, low-carb diet (Eat Fat and Grow Slim). Allowed alcohol in moderation (spirits, dry wine). Opposed processed foods.",
+                    "lifestyle": null,
+                    "age_at_death": 53,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Dr. John Rolo",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote a low carb book in 1797 that was widely referenced for diabetes patients throughout the 1800s.",
+                    "diet": "**Low carb** diet.",
+                    "dietDetails": "Pioneered low-carb diets for diabetes. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": "Around 66",
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Dr. Leila Denmark",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Practiced medicine until age 103, the oldest doctor on earth. Developed whooping cough vaccine.",
+                    "diet": "Diet included an egg, lean meat, black eyed peas, or lentils with every meal; whole grain or potato with every meal; vegetables with lunch and dinner. Advised **no one should drink milk past eight months**.",
+                    "dietDetails": "Drank only water. Ate protein and vegetables at every meal. Avoided sugar and fruit juice. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 114,
+                    "cause_of_death": "Implied natural causes"
+                },
+                {
+                    "name": "Dr. Max Gerson",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Became famous for the **Gerson Therapy**, claiming success curing diseases including cancer.",
+                    "diet": "**Vegan diet,** many glasses of fresh squeezed juice.",
+                    "dietDetails": "Gerson Therapy (plant-based, juices). Reduces alcohol to a minimum or prohibits it.",
+                    "lifestyle": "Frequent **coffee enemas**.",
+                    "age_at_death": 77,
+                    "cause_of_death": "Official cause: Pneumonia (Internet speculation: arsenic poisoning)"
+                },
+                {
+                    "name": "Dr. Sue",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote the book *Carbohydrates Can Kill*.",
+                    "diet": "**Low carb** (anti-carb).",
+                    "dietDetails": "Author of 'Carbohydrates Can Kill' (Dr. Robert K. Su). Advocates restricting 'killer carbs'. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 71,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Dr. Stuart Berger",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote *Forever Young*.",
+                    "diet": "Loved **corned beef sandwiches and champagne**.",
+                    "dietDetails": "Promoted 'Immune Power Diet' (elimination of dairy, wheat, sugar, etc.). No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 40,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Dr. Stillman",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote the 4 million copy best-selling low carb diet book published in 1967.",
+                    "diet": "**Low carb** diet; could eat as much as needed of lean meats, unfatty fish/seafood, chicken, turkey, eggs, cottage cheese, and farmers cheese; no calorie counting.",
+                    "dietDetails": "High-protein, low-carb/fat diet. Strictly eliminates alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 79,
+                    "cause_of_death": "Heart attack"
+                },
+                {
+                    "name": "Dr. Wolfgang Lutz",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Austrian physician and long-lived low-carber who wrote *My Life Without Bread*.",
+                    "diet": "**Low carb** (allowed 72 grams of carbs per day). Consumed fruit and vegetables at every meal, fish and butter, potatoes, cold meat/cheese, salad, and wine.",
+                    "dietDetails": "Low-carb diet. Consumed alcohol daily (1-2 glasses of beer/wine).",
+                    "lifestyle": null,
+                    "age_at_death": 97,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Elma Stewart",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote a popular carnivore diet book in 1898 that cured her joint and muscle pain.",
+                    "diet": "**Carnivore diet** (chopped meat and hot water).",
+                    "dietDetails": "Salisbury Diet (lean beef, hot water). Limited vegetables/starches. Alcohol likely prohibited.",
+                    "lifestyle": null,
+                    "age_at_death": 66,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Ellen White",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Co-founder of the Seventh-day Adventists (SDA); wrote the simple vegetarian health code in 1863.",
+                    "diet": "Simple **vegetarian** health code: beans, veggies, fruits, whole grains, and nuts (close to natural state). Allowed dairy but expressed misgivings.",
+                    "dietDetails": "Seventh-day Adventist health reformer. Plant-based diet. Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 87,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Ellsworth Wareham",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Heart surgeon who promoted a healthy lifestyle well past a hundred.",
+                    "diet": "**Vegan** (for about half his life); took Vitamin B12.",
+                    "dietDetails": "Strict vegan (whole grains, vegetables, almond milk). Seventh-day Adventist, so strictly no alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 104,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Eustis Chesser",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Popular book author who wrote *Slimming for the Million* in 1939.",
+                    "diet": "Not specified, but associated with low carb context.",
+                    "dietDetails": "Advocated low-carb, high-protein diet ('Slimming for the Million'). No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 70,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Fred Kummerow",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Professor of bio-sciences who spent 50 years raising awareness about trans fats.",
+                    "diet": "Believed in a **balanced diet**. Ate an **egg every day**; focused on eating sufficient protein. Dinner included meat or fish, baked potato, vegetables, and fruit.",
+                    "dietDetails": "Ate whole foods (eggs, butter, meat, vegetables). Avoided processed foods and trans fats. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 102,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Gayelord Houser",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Dashingly handsome nutritionist to stars, author of *Look Younger, Live Longer*.",
+                    "diet": "Recommended **whole natural foods** (vegetables, lean meats) and fortifying them with skim milk, brewer's yeast, and blackstrap molasses.",
+                    "dietDetails": "Promoted 'wonder foods' (yogurt, brewer's yeast, etc.) and vegetable juices. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 89,
+                    "cause_of_death": "Pneumonia"
+                },
+                {
+                    "name": "Georgios Silo",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Founder of the **macrobiotic diet** and wrote 300 books.",
+                    "diet": "Macrobiotic: roughly 50% whole grain (like brown rice), 25% vegetables, 10% legumes, 5% miso soup, and occasional fish and nuts.",
+                    "dietDetails": "Founder of the macrobiotic diet. Emphasized whole grains, vegetables, and beans. Alcohol generally discouraged.",
+                    "lifestyle": null,
+                    "age_at_death": 72,
+                    "cause_of_death": "Heart attack"
+                },
+                {
+                    "name": "Gypsy Boots",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Character who promoted Yoga and vegetarianism.",
+                    "diet": "**Vegetarian**.",
+                    "dietDetails": "Promoted raw foods, juices, and vegetarianism. No specific alcohol info found.",
+                    "lifestyle": "Advocated Yoga.",
+                    "age_at_death": 89,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Harold Triac",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Dean of Loma Linda's Medical School.",
+                    "diet": "**Seventh Day Adventist** (no meat, alcohol); thought **milk** was healthy.",
+                    "dietDetails": "Seventh-day Adventist, so plant-based diet, no alcohol, no smoking. Believed milk was healthy.",
+                    "lifestyle": "No smoking.",
+                    "age_at_death": 97,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Harriet Chick (Dame)",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Scientist hero; researcher who solved nutritional mysteries leading to Nobel Prizes (scurvy, rickets).",
+                    "diet": "Research showed whole grains prevented beriberi and sprouted beans/fish liver oils/butter.",
+                    "dietDetails": "Nutrition scientist (rickets/pellagra). No personal diet details found.",
+                    "lifestyle": "Sun prevented scurvy/rickets.",
+                    "age_at_death": 102,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Herman Taller",
+                    "category": "Alternative / Supplement Based",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote a sensational book in 1961, later convicted of fraud.",
+                    "diet": "Claimed **safflower oil pills** caused weight loss by softening fat tissues.",
+                    "dietDetails": "Author of 'Calories Don't Count' (low-carb, high-fat, safflower oil). Strictly prohibited alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 78,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Jack LaLanne",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "America's fitness and nutrition guru for about 60 years.",
+                    "diet": "Focused on **fruits and vegetables**; advised against eating anything that came from a cow or a pig.",
+                    "dietDetails": "Advocated whole, unprocessed foods, especially fruits and vegetables. Avoided red meat. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 96,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Jay Cordage (The Juice Man)",
+                    "category": "Alternative / Supplement Based",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Author of best-selling books about **juicing**.",
+                    "diet": "**Juicing** advocate.",
+                    "dietDetails": "Promoted juicing for health and weight loss. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 93,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Jay Dinshah",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Founder of the American Vegan Society.",
+                    "diet": "**Vegan**.",
+                    "dietDetails": "Strict vegan diet. Founder of American Vegan Society. Strictly against alcohol.",
+                    "lifestyle": "Advocated kindness to animals.",
+                    "age_at_death": 66,
+                    "cause_of_death": "Apparently, of a **heart attack**"
+                },
+                {
+                    "name": "Jean Anthelme Brilat Savarin",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Sometimes considered the father of low carb diets.",
+                    "diet": "Wrote about thoroughly enjoying food. His regimen to fatten thin women included eating **bread all day** and sugar on fruit.",
+                    "dietDetails": "Advocated a diet focused on enjoyment, including rich foods. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 70,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Jean Mayer",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Obesity researcher at Harvard and White House advisor.",
+                    "diet": "Recommended a **balanced diet** that included meat, poultry, and fish. Thought **milk was an excellent food**.",
+                    "dietDetails": "Advocated a balanced diet with meat, poultry, fish, and milk. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 73,
+                    "cause_of_death": "Heart attack"
+                },
+                {
+                    "name": "Jerome Rodale",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Popularized **organic food** in America; publisher of *Prevention* magazine.",
+                    "diet": "Ate **food very fast**; suffered from indigestion. Ate a lot of **meat** and **rich foods**.",
+                    "dietDetails": "Heavy meat eater, rich foods, sweets. Consumed whisky mixed with claret, and Vin Mariani.",
+                    "lifestyle": null,
+                    "age_at_death": 72,
+                    "cause_of_death": "Heart attack (on the set of *The Dick Cavett Show*)"
+                },
+                {
+                    "name": "Jim Fixx",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Believed being in marathon shape made him heart attack-proof.",
+                    "diet": "Ate **organic food**; took 70 supplements a day.",
+                    "dietDetails": "Promoted organic foods and supplements. Opposed milk and sugar. No specific alcohol info found.",
+                    "lifestyle": "Was an ex-overweight smoker.",
+                    "age_at_death": "Implied 50-something",
+                    "cause_of_death": "Heart attack while out running"
+                },
+                {
+                    "name": "Joe Rollino",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Strong man performer; inspirational centenarian.",
+                    "diet": "Gave up **meat at age 20**; ate a variety of dairy foods.",
+                    "dietDetails": "Vegetarian from age 20, included dairy. No specific alcohol info found.",
+                    "lifestyle": "Exercised daily (walking, working out, swimming).",
+                    "age_at_death": 104,
+                    "cause_of_death": "Run over by a car"
+                },
+                {
+                    "name": "Joe Weider",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Father of bodybuilding; creator of Olympia contests.",
+                    "diet": "High carbs (whole foods like fruits and vegetables) and low fat. Warned **too much protein is toxic**.",
+                    "dietDetails": "Advocated high-carb, low-fat diets for bodybuilding. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 93,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Joel Kaufman",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Co-founded THINCS.org (The International Network of Cholesterol Skeptics); wrote *Malignant Medical Myths*.",
+                    "diet": "Cholesterol skeptic/low carb community context.",
+                    "dietDetails": "Associated with the low-carb and cholesterol skeptic community. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 78,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "John Harvey Kellogg",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Famous doctor, inventor of corn flakes, Seventh-day Adventist.",
+                    "diet": "**Vegetarian** diet. Promoted carbohydrates as the \"clean, blessed nutrient\" over protein.",
+                    "dietDetails": "Strict vegetarian, promoted plant-based diets and whole grains. Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 91,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "John Yudkin",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Professor of nutrition at Cambridge, famous for *Pure, White and Deadly*.",
+                    "diet": "Favored a **low-carb diet**; believed sugar was a bigger factor in heart disease than saturated fat; favored **milk**.",
+                    "dietDetails": "Advocated a low-carb diet, emphasizing sugar as the primary dietary villain. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 84,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Judy Mozelle",
+                    "category": "Alternative / Supplement Based",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Sold a million copies of *The Beverly Hills Diet*, endorsed by celebrities.",
+                    "diet": "**Food combining** diet; could not combine carbs and protein in the same meal. No nutritional background.",
+                    "dietDetails": "Promoted a food combining diet. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 63,
+                    "cause_of_death": "Peripheral vascular disease"
+                },
+                {
+                    "name": "Leon Chaitow",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote another stone age diet book.",
+                    "diet": "Stone age diet (implied paleo).",
+                    "dietDetails": "Advocated a 'stone age' or paleo-style diet. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 81,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Linus Pauling",
+                    "category": "Alternative / Supplement Based",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Celebrated chemist who won two Nobel prizes.",
+                    "diet": "Believed in **mega doses of vitamins**. Advocated a balanced diet, avoiding sugar, refined grains, and saturated fat.",
+                    "dietDetails": "Advocated mega-doses of Vitamin C and a balanced diet avoiding sugar and refined foods. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 93,
+                    "cause_of_death": "Prostate cancer"
+                },
+                {
+                    "name": "Luigi Cornaro",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Wrote *Sure and Certain Methods*, considered a low carb book pioneer.",
+                    "diet": "**Low carb** (had some bread, but no fruit and vegetables except wine); later narrowed eating to just **eggs**.",
+                    "dietDetails": "Practiced severe calorie restriction and a low-carb diet, including wine. Later focused on eggs.",
+                    "lifestyle": null,
+                    "age_at_death": "Unknown",
+                    "cause_of_death": "Unspecified fainting fit, possibly a heart attack"
+                },
+                {
+                    "name": "Lulu Hunt Peters",
+                    "category": "Calorie Restriction / Fasting",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Wrote the first best-selling book in America (1918), introducing the concept of a **calorie**.",
+                    "diet": "Focused on calorie counting; had a backstory of losing 70 pounds.",
+                    "dietDetails": "Pioneered calorie counting for weight loss. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 57,
+                    "cause_of_death": "Pneumonia"
+                },
+                {
+                    "name": "Manohar Aich",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Mr. Universe 1952.",
+                    "diet": "Simple diet of **milk, fruits, and vegetables**, along with rice, lentils, and **fish**. Did not drink alcohol.",
+                    "dietDetails": "Simple diet of milk, fruits, vegetables, rice, lentils, and fish. Did not drink alcohol.",
+                    "lifestyle": "Did not smoke.",
+                    "age_at_death": 104,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Margaret Keys",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Biochemist who was Ancel Keys' wife and assistant, co-wrote cookbooks.",
+                    "diet": "Promoted the **Mediterranean diet** (low saturated fat).",
+                    "dietDetails": "Co-promoted the Mediterranean diet with her husband, Ancel Keys. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 97,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Martha Clare Morris",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Respected expert with a PhD from Harvard; developed the **MIND diet**.",
+                    "diet": "MIND diet, a variant of the Mediterranean and DASH diets, designed to prevent Alzheimer's.",
+                    "dietDetails": "Developed the MIND diet, a hybrid of Mediterranean and DASH diets. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 64,
+                    "cause_of_death": "Esophageal cancer"
+                },
+                {
+                    "name": "Martin Katon",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Sold millions of copies of his books in the 1980s.",
+                    "diet": "**\"Natural\" eater** (fruits, vegetables, grains).",
+                    "dietDetails": "Natural/organic vegetarian (fruits, nuts, sprouts). Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 90,
+                    "cause_of_death": "Long illness"
+                },
+                {
+                    "name": "Mary Enig",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Professor of biochemistry, co-founded the Weston Price Foundation.",
+                    "diet": "Skeptic of saturated fat leading to heart disease. Believed **butter and coconut oil** were good and advocated for **whole milk**.",
+                    "dietDetails": "Advocated for traditional fats like butter and coconut oil, and whole milk. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 83,
+                    "cause_of_death": "Stroke"
+                },
+                {
+                    "name": "Maurice Shils",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Organized the world's experts to produce major reference works in nutrition.",
+                    "diet": "Implied preference for a diet based on **a lot of plants** and not much processed foods or red meat.",
+                    "dietDetails": "Advocated a diet rich in plants, low in processed foods and red meat. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 100,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Meagan Hefford",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Social media influencer promoting protein powder.",
+                    "diet": "Very **high protein diet**.",
+                    "dietDetails": "Followed a very high protein diet for bodybuilding. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 25,
+                    "cause_of_death": "Toxic levels of **ammonia in her blood**"
+                },
+                {
+                    "name": "Michel Montignac",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Flamboyant French businessman who sold 17 million books.",
+                    "diet": "Mostly **low carb**; first to promote the **glycemic index** to consumers; avoided fast digesting carbs (white flour, sugar, potatoes, carrots).",
+                    "dietDetails": "Pioneered the glycemic index diet, avoiding high-GI carbs. Alcohol restricted in Phase 1 (max 1 glass wine/day).",
+                    "lifestyle": null,
+                    "age_at_death": 66,
+                    "cause_of_death": "Prostate cancer"
+                },
+                {
+                    "name": "Michio Kushi",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Huge force in promoting the macrobiotic diet.",
+                    "diet": "**Macrobiotic diet** (brown rice, vegetables, sea vegetables, beans).",
+                    "dietDetails": "Founder of Macrobiotics (George Ohsawa). Whole grains, vegetables. Alcohol generally prohibited (occasional natural beer allowed).",
+                    "lifestyle": null,
+                    "age_at_death": 88,
+                    "cause_of_death": "Pancreatic cancer"
+                },
+                {
+                    "name": "Mr. Rogers",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Co-owner of *Vegetarian Times*.",
+                    "diet": "**Vegetarian** (stopped eating meat in 1970, seafood a few years later).",
+                    "dietDetails": "Vegetarian, later vegan. Co-owner of Vegetarian Times. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 74,
+                    "cause_of_death": "Stomach cancer"
+                },
+                {
+                    "name": "Nathan Pritikin",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Came to a plant-dominant diet after suffering from heart disease and leukemia.",
+                    "diet": "**Plant-dominant Mediterranean diet**; focused on dropping his cholesterol.",
+                    "dietDetails": "Developed a very low-fat, high-fiber, plant-dominant diet. Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 69,
+                    "cause_of_death": "Leukemia"
+                },
+                {
+                    "name": "Norman Walker",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Raw food vegan juicer pioneer who wrote many bestselling books.",
+                    "diet": "**Raw food** diet and **juicing**.",
+                    "dietDetails": "Pioneered raw food veganism and juicing. Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 99,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Paul Bragg",
+                    "category": "Alternative / Supplement Based",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Force of nature who sold healthy living products for a 100 years.",
+                    "diet": "Healthy living product advocate.",
+                    "dietDetails": "Advocated natural foods, fasting, and health products. No specific alcohol info found.",
+                    "lifestyle": "Known to exaggerate his age.",
+                    "age_at_death": "Apparent age 81",
+                    "cause_of_death": "Heart attack while swimming"
+                },
+                {
+                    "name": "Paul Dudley White",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Father of cardiology and Eisenhower's cardiologist.",
+                    "diet": "Advised a balanced view on fat content, resting between those who warned against all fats and those who advocated high contents of fat.",
+                    "dietDetails": "Advocated a balanced diet, moderate fat intake. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 87,
+                    "cause_of_death": "Stroke"
+                },
+                {
+                    "name": "Peter Skrabanek",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Founding member of THINCS.org.",
+                    "diet": "Cholesterol skeptic/low carb community context.",
+                    "dietDetails": "Associated with the low-carb and cholesterol skeptic community. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 53,
+                    "cause_of_death": "Prostate cancer"
+                },
+                {
+                    "name": "Phyllis Balch",
+                    "category": "Alternative / Supplement Based",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Nutritionist who sold 8 million books on herbal remedies.",
+                    "diet": "Wrote about herbal healing and remedies (implied naturopathic/supplement-heavy approach).",
+                    "dietDetails": "Advocated herbal remedies and natural healing. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 74,
+                    "cause_of_death": "Cancer"
+                },
+                {
+                    "name": "Professor Michael Berger",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Member of THINCS.org.",
+                    "diet": "Cholesterol skeptic/low carb community context.",
+                    "dietDetails": "Associated with the low-carb and cholesterol skeptic community. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 58,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Raymond Francis",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Chemist and bestselling author who had little respect for doctors and distrusted vaccinations.",
+                    "diet": "Recommended a diet as close to **whole plants** as possible.",
+                    "dietDetails": "Advocated a whole-plant-based diet. No specific alcohol info found.",
+                    "lifestyle": "Distrusted vaccinations.",
+                    "age_at_death": 83,
+                    "cause_of_death": "cause_of_death not released"
+                },
+                {
+                    "name": "Richard Mackarness",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Published a popular low carb book, three years before Herman Taller.",
+                    "diet": "**Low carb**.",
+                    "dietDetails": "Advocated a low-carb diet. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 79,
+                    "cause_of_death": "Stroke"
+                },
+                {
+                    "name": "Robert Cameron",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Famed photographer who wrote *The Drinking Man's Diet* (1964).",
+                    "diet": "Aimed for **60 grams of carbohydrates daily**. Meals included meat, poultry, fish, fruits, vegetables, and drinks like martinis and wine with every meal.",
+                    "dietDetails": "Authored 'The Drinking Man's Diet' (60g carbs/day). Allowed alcohol (martinis, wine) with meals.",
+                    "lifestyle": null,
+                    "age_at_death": 98,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Robert Kuwalski",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Author of *The 8-Week Cholesterol Cure*. Had a heart attack and bypass at 35.",
+                    "diet": "Allowed **red meat in moderation**.",
+                    "dietDetails": "Advocated a diet to lower cholesterol, allowing red meat in moderation. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 65,
+                    "cause_of_death": "Aneurysm"
+                },
+                {
+                    "name": "Roy Walford",
+                    "category": "Calorie Restriction / Fasting",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "UCLA professor and expert on life extension through **calorie restriction**.",
+                    "diet": "**Calorie restriction** (1600 calories/day).",
+                    "dietDetails": "Pioneered research and practice of calorie restriction for longevity. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 79,
+                    "cause_of_death": "Lou Gehrig's disease"
+                },
+                {
+                    "name": "Russell Chittenden",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Father of American biochemistry, professor at Yale.",
+                    "diet": "Advocated a **lower protein diet**.",
+                    "dietDetails": "Advocated a lower protein diet. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 87,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Russell Wilder",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Researcher at the Mayo Clinic who developed the **keto diet**.",
+                    "diet": "Advocated that animal proteins (meat, eggs, milk) are superior.",
+                    "dietDetails": "Developed the ketogenic diet for epilepsy. Advocated animal proteins. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 74,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Rynn Berry",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Vegan who wrote about famous vegetarians.",
+                    "diet": "**Vegan**.",
+                    "dietDetails": "Strict vegan diet. Wrote extensively on vegetarian history. Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 68,
+                    "cause_of_death": "Heart attack while jogging"
+                },
+                {
+                    "name": "Staffan Lindeberg",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Paleo diet pioneer, wrote *Food in Western Diseases*.",
+                    "diet": "Paleo diet context.",
+                    "dietDetails": "Pioneered research into the Paleo diet. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 66,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Stephen Byrnes",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "One of the younger followers of the Weston Price Foundation who died tragically young. Wrote against vegetarianism.",
+                    "diet": "Diet centered on **full fat animal foods** like butter and cream.",
+                    "dietDetails": "Advocated a diet rich in full-fat animal foods. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": "Around 40",
+                    "cause_of_death": "Stroke"
+                },
+                {
+                    "name": "Steve Reeves",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Bodybuilder who starred as Hercules.",
+                    "diet": "Advocated a **balanced natural food diet** including all food groups, with a lot of **milk**.",
+                    "dietDetails": "Advocated a balanced natural food diet, including milk. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 74,
+                    "cause_of_death": "Blood clot two days after surgery"
+                },
+                {
+                    "name": "Sylvester Graham",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Presbyterian minister who was a huge influencer in the mid-1800s, inspiring Ellen White.",
+                    "diet": "Pescetarian (**vegetarian + fish**). Ate 10 raw vegetables and 5-6 pieces of fruit per day. Avoided dairy, sugar, and coffee.",
+                    "dietDetails": "Advocated vegetarianism, whole grains (Graham bread), and avoiding refined foods. Strictly against alcohol.",
+                    "lifestyle": null,
+                    "age_at_death": 57,
+                    "cause_of_death": "Affliction/pain (received an opium enema)"
+                },
+                {
+                    "name": "Upton Sinclair",
+                    "category": "Calorie Restriction / Fasting",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "World-class writer who penned a famous line about salary and understanding; wrote a book on fasting.",
+                    "diet": "Wrote about fasting and diet. Modern interpretation of his philosophy: **eat mostly plants** but a little meat.",
+                    "dietDetails": "Advocated fasting and a plant-heavy diet with some meat. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 90,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Vilhjalmur Stefansson",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Arctic explorer and Harvard professor; advocate of an **all-meat diet**.",
+                    "diet": "Plant-free diet (seal, caribou, muskox, polar bear, etc.); stated that you must have **fat with the lean**.",
+                    "dietDetails": "Advocated an all-meat, plant-free diet, emphasizing fat with lean meat. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 82,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Vince Gironda",
+                    "category": "Bodybuilder / Fitness",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Fitness guru and bodybuilder who wrote the low carb book *Unleashing the Wild Physique*.",
+                    "diet": "**Low carb** diet.",
+                    "dietDetails": "Advocated a low-carb diet for bodybuilding. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 79,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Walter Voegtlin",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Paleo diet pioneer, wrote *The Stone Age Diet* in 1975.",
+                    "diet": "**Paleo diet**.",
+                    "dietDetails": "Pioneered the Paleo diet. No specific alcohol info found.",
+                    "lifestyle": null,
+                    "age_at_death": 71,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Weston Price",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Dentist who traveled the world in the 1930s to study the effects of processed foods.",
+                    "diet": "Warned against the dangers of **processed food** and **technology** in food production.",
+                    "dietDetails": "Traditional diets (nutrient-dense). Alcohol in strict moderation (unpasteurized wine/beer).",
+                    "lifestyle": null,
+                    "age_at_death": 77,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "William Banting",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Famous as the **father of low carb diets**. Portly undertaker whose doctor advised him on diet.",
+                    "diet": "Gave up milk, butter, bread, sugar, and beer. New diet included plenty of **meat**, a little dry bread, boiled rice, some fruit, green vegetables, and wine.",
+                    "dietDetails": "Banting Diet (low-carb). Alcohol allowed liberally (claret, sherry, grog; no beer/sweet wine).",
+                    "lifestyle": null,
+                    "age_at_death": 81,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Zheng Ji",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Chinese nutrition professor, long-lived centenarian.",
+                    "diet": "**Whole food diet** (70% carbohydrates, 10% protein, 20% fat). Main course was **vegetables** for all three meals, and they consumed little dairy.",
+                    "lifestyle": null,
+                    "age_at_death": 108,
+                    "cause_of_death": "Not specified"
+                },
+                {
+                    "name": "Zyzz",
+                    "category": "Bodybuilder / Fitness (Steroid Use Implicated)",
+                    "antigravityCategory": "Bodybuilding & High-Performance",
+                    "significance": "Legendary social media influencer in bodybuilding.",
+                    "diet": "Very **high protein diets**.",
+                    "lifestyle": "Posted his **steroid cycles**. Insiders implicated human growth hormone, diuretics.",
+                    "age_at_death": 22,
+                    "cause_of_death": "Heart attack"
+                },
+                {
+                    "name": "Dr. Paul Rosch",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Found on the cholesterol skeptics list.",
+                    "diet": "Advised lots of **vegetables, fruits, and whole grains** (not a low carb book).",
+                    "lifestyle": null,
+                    "age_at_death": "92 (Died Feb 2020)",
+                    "cause_of_death": "Natural causes"
+                },
+                {
+                    "name": "Thomas Tryon",
+                    "category": "Plant-Based / Low Meat",
+                    "antigravityCategory": "Plant-Based & Vegetarian",
+                    "significance": "Wrote *The Way to Health* (1681), which inspired Benjamin Franklin to become vegetarian.",
+                    "diet": "Inspired **vegetarianism**.",
+                    "lifestyle": null,
+                    "age_at_death": "68 (Died 1703)",
+                    "cause_of_death": "Natural causes"
+                },
+                {
+                    "name": "Younger two (Weston Price followers)",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Died tragically young.",
+                    "diet": "Diet centered on **full fat animal foods** like butter and cream.",
+                    "lifestyle": null,
+                    "age_at_death": "< 40 (Younger than Stephen Byrnes)",
+                    "cause_of_death": "Liver and brain cancers"
+                },
+                {
+                    "name": "Jerry Stamler",
+                    "category": "Balanced / Mediterranean",
+                    "antigravityCategory": "Balanced / Whole Foods",
+                    "significance": "Centenarian and colleague of Ancel Keys; was still working on heart disease funded by the NIH a week before passing away.",
+                    "diet": "Eats the **Mediterranean diet**.",
+                    "lifestyle": null,
+                    "age_at_death": "102 (Died Jan 2022)",
+                    "cause_of_death": "Natural causes"
+                },
+                {
+                    "name": "Dr. Richard K. Bernstein",
+                    "category": "Low Carb / High Meat",
+                    "antigravityCategory": "Animal-Based & Low-Carb",
+                    "significance": "Introduced using a very low-carbohydrate diet as a viable, life-extending approach for managing Type 1 Diabetes, detailed in his influential book, Dr. Bernstein's Diabetes Solution",
+                    "diet": "very low-carbohydrate diet",
+                    "lifestyle": "exercise",
+                    "age_at_death": "90 (Died April 2025)",
+                    "cause_of_death": "Natural causes"
+                }
+            ];
+
+        const CATEGORY_MAP = {
+            "Plant-Based & Vegetarian": "Low Meat",
+            "Balanced / Whole Foods": "Low Meat",
+            "Animal-Based & Low-Carb": "High Meat",
+            "Bodybuilding & High-Performance": "High Meat"
+        };
+        const COLORS = {
+            "Low Meat": "#10b981",
+            "High Meat": "#ef4444"
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            try {
+                const processedData = processData(rawData);
+                renderSummary(processedData);
+                renderBeeSwarm(processedData);
+                renderBoxPlot(processedData);
+                renderSurvivalCurve(processedData);
+                renderPeople(processedData);
+            } catch (error) {
+                console.error("Error initializing dashboard:", error);
+            }
+        });
+
+        function processData(rawData) {
+            // Filter and map data
+            const cleanData = rawData
+                .filter(d => {
+                    // Filter out invalid ages or those under 30
+                    const age = typeof d.age_at_death === 'number' ? d.age_at_death : parseInt(d.age_at_death);
+                    return !isNaN(age) && age >= 30;
+                })
+                .map(d => {
+                    const category = CATEGORY_MAP[d.antigravityCategory] || "Unknown";
+                    const age = typeof d.age_at_death === 'number' ? d.age_at_death : parseInt(d.age_at_death);
+                    return {
+                        ...d,
+                        category,
+                        age
+                    };
+                })
+                .filter(d => d.category !== "Unknown"); // Ensure we only have our target categories
+
+            return cleanData;
+        }
+
+        function renderSummary(data) {
+            const container = document.getElementById('summary-stats');
+
+            // Calculate stats per category
+            const stats = d3.rollup(data,
+                v => ({
+                    count: v.length,
+                    avgAge: d3.mean(v, d => d.age)
+                }),
+                d => d.category
+            );
+
+            // Render HTML
+            const categories = ["Low Meat", "High Meat"];
+
+            container.innerHTML = categories.map(cat => {
+                const stat = stats.get(cat);
+                const color = COLORS[cat];
+                return `
+            <div class="stat-row" style="border-left: 4px solid ${color}">
+                <div class="stat-label">
+                    <span style="color: ${color}">●</span>
+                    ${cat}
+                </div>
+                <div>
+                    <span class="stat-count">(${stat.count} people)</span>
+                    <span class="stat-value">${stat.avgAge.toFixed(1)} years</span>
+                </div>
+            </div>
+        `;
+            }).join('');
+        }
+
+        function renderBeeSwarm(data) {
+            const container = document.getElementById('beeswarm-chart');
+            const width = container.clientWidth;
+            const height = 400;
+            const margin = { top: 40, right: 40, bottom: 40, left: 100 };
+
+            // Clear previous chart
+            container.innerHTML = '';
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Scales
+            const x = d3.scaleLinear()
+                .domain([20, 120]) // Age range
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scalePoint()
+                .domain(["Low Meat", "High Meat"])
+                .range([height / 3, 2 * height / 3])
+                .padding(0.5);
+
+            // Axes
+            svg.append("g")
+                .attr("transform", `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(10))
+                .call(g => g.select(".domain").remove())
+                .call(g => g.selectAll(".tick line").attr("stroke-opacity", 0.1));
+
+            svg.append("g")
+                .attr("transform", `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y).tickSize(0))
+                .call(g => g.select(".domain").remove())
+                .selectAll("text")
+                .attr("font-weight", "bold")
+                .attr("font-size", "14px");
+
+            // Tooltip
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+
+            // Simulation
+            const simulation = d3.forceSimulation(data)
+                .force("x", d3.forceX(d => x(d.age)).strength(1))
+                .force("y", d3.forceY(d => y(d.category)).strength(0.1))
+                .force("collide", d3.forceCollide(6))
+                .stop();
+
+            for (let i = 0; i < 120; ++i) simulation.tick();
+
+            // Draw circles
+            svg.append("g")
+                .selectAll("circle")
+                .data(data)
+                .join("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 5)
+                .attr("fill", d => COLORS[d.category])
+                .attr("stroke", "white")
+                .attr("stroke-width", 1.5)
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(`
+                <strong>${d.name}</strong>
+                Age: ${d.age}<br>
+                Diet: ${d.category}<br>
+                <i>${d.cause_of_death || "Cause not specified"}</i><br>
+                <span style="font-size: 0.8em; color: #9ca3af; margin-top: 4px; display: block;">Click for details</span>
+            `)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", () => {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                })
+                .on("click", (event, d) => {
+                    scrollToPerson(d.name);
+                })
+                .style("cursor", "pointer");
+        }
+
+        function renderBoxPlot(data) {
+            const container = document.getElementById('boxplot-chart');
+            const width = container.clientWidth;
+            const height = 300;
+            const margin = { top: 20, right: 40, bottom: 40, left: 100 };
+
+            container.innerHTML = '';
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Group data by category
+            const groupedData = d3.group(data, d => d.category);
+            const stats = [];
+
+            groupedData.forEach((values, key) => {
+                const ages = values.map(d => d.age).sort(d3.ascending);
+                const q1 = d3.quantile(ages, 0.25);
+                const median = d3.quantile(ages, 0.5);
+                const q3 = d3.quantile(ages, 0.75);
+                const min = d3.min(ages);
+                const max = d3.max(ages);
+                stats.push({ key, q1, median, q3, min, max });
+            });
+
+            // Scales
+            const x = d3.scaleLinear()
+                .domain([20, 120])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleBand()
+                .domain(["Low Meat", "High Meat"])
+                .range([height - margin.bottom, margin.top])
+                .padding(0.4);
+
+            // Axes
+            svg.append("g")
+                .attr("transform", `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(10))
+                .call(g => g.select(".domain").remove())
+                .call(g => g.selectAll(".tick line").attr("stroke-opacity", 0.1));
+
+            svg.append("g")
+                .attr("transform", `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y).tickSize(0))
+                .call(g => g.select(".domain").remove())
+                .selectAll("text")
+                .attr("font-weight", "bold")
+                .attr("font-size", "14px");
+
+            // Draw Box Plots
+            const g = svg.selectAll(".box")
+                .data(stats)
+                .enter()
+                .append("g");
+
+            // Horizontal line (whisker range)
+            g.append("line")
+                .attr("x1", d => x(d.min))
+                .attr("x2", d => x(d.max))
+                .attr("y1", d => y(d.key) + y.bandwidth() / 2)
+                .attr("y2", d => y(d.key) + y.bandwidth() / 2)
+                .attr("stroke", "#9ca3af")
+                .attr("stroke-width", 1);
+
+            // Box (IQR)
+            g.append("rect")
+                .attr("x", d => x(d.q1))
+                .attr("y", d => y(d.key))
+                .attr("width", d => x(d.q3) - x(d.q1))
+                .attr("height", y.bandwidth())
+                .attr("fill", d => COLORS[d.key])
+                .attr("opacity", 0.6)
+                .attr("rx", 4);
+
+            // Median line
+            g.append("line")
+                .attr("x1", d => x(d.median))
+                .attr("x2", d => x(d.median))
+                .attr("y1", d => y(d.key))
+                .attr("y2", d => y(d.key) + y.bandwidth())
+                .attr("stroke", "black")
+                .attr("stroke-width", 2);
+
+            // Labels
+            g.append("text")
+                .attr("x", d => x(d.median))
+                .attr("y", d => y(d.key) - 5)
+                .text(d => `Median: ${d.median}`)
+                .attr("font-size", "10px")
+                .attr("fill", "#4b5563")
+                .attr("text-anchor", "middle");
+        }
+
+        function renderSurvivalCurve(data) {
+            const container = document.getElementById('survival-chart');
+            const width = container.clientWidth;
+            const height = 300;
+            const margin = { top: 20, right: 40, bottom: 40, left: 50 };
+
+            container.innerHTML = '';
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Calculate survival data
+            const categories = ["Low Meat", "High Meat"];
+            const survivalData = categories.map(cat => {
+                const catData = data.filter(d => d.category === cat);
+                const total = catData.length;
+                const ages = catData.map(d => d.age).sort(d3.ascending);
+
+                // Create points for step chart
+                const points = [{ age: 20, survival: 1 }]; // Start at 100%
+                let alive = total;
+
+                // Add points for each death
+                // Group by age to handle multiple deaths at same age
+                const deathsByAge = d3.rollup(ages, v => v.length, d => d);
+                const sortedAges = Array.from(deathsByAge.keys()).sort(d3.ascending);
+
+                sortedAges.forEach(age => {
+                    const deaths = deathsByAge.get(age);
+                    alive -= deaths;
+                    points.push({ age: age, survival: alive / total });
+                });
+
+                // Extend to max age if needed
+                if (points[points.length - 1].age < 120) {
+                    points.push({ age: 120, survival: points[points.length - 1].survival });
+                }
+
+                return { category: cat, points };
+            });
+
+            // Scales
+            const x = d3.scaleLinear()
+                .domain([20, 120])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLinear()
+                .domain([0, 1])
+                .range([height - margin.bottom, margin.top]);
+
+            // Axes
+            svg.append("g")
+                .attr("transform", `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(10))
+                .call(g => g.select(".domain").remove())
+                .call(g => g.selectAll(".tick line").attr("stroke-opacity", 0.1));
+
+            svg.append("g")
+                .attr("transform", `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")))
+                .call(g => g.select(".domain").remove())
+                .call(g => g.selectAll(".tick line").attr("stroke-opacity", 0.1));
+
+            // Draw Lines
+            const line = d3.line()
+                .curve(d3.curveStepAfter)
+                .x(d => x(d.age))
+                .y(d => y(d.survival));
+
+            svg.selectAll(".line")
+                .data(survivalData)
+                .enter()
+                .append("path")
+                .attr("fill", "none")
+                .attr("stroke", d => COLORS[d.category])
+                .attr("stroke-width", 2.5)
+                .attr("d", d => line(d.points));
+
+            // Legend
+            const legend = svg.append("g")
+                .attr("font-family", "sans-serif")
+                .attr("font-size", 10)
+                .attr("text-anchor", "end")
+                .selectAll("g")
+                .data(categories)
+                .enter().append("g")
+                .attr("transform", (d, i) => `translate(${width - margin.right},${margin.top + i * 20})`);
+
+            legend.append("rect")
+                .attr("x", -19)
+                .attr("width", 19)
+                .attr("height", 19)
+                .attr("fill", d => COLORS[d]);
+
+            legend.append("text")
+                .attr("x", -24)
+                .attr("y", 9.5)
+                .attr("dy", "0.32em")
+                .text(d => d);
+        }
+
+        function generateId(name) {
+            return `person-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        }
+
+        function renderPeople(data) {
+            const grid = document.getElementById('people-grid');
+            grid.innerHTML = '';
+
+            // Sort by age descending (longest lived first)
+            const sortedData = [...data].sort((a, b) => b.age - a.age);
+
+            sortedData.forEach(person => {
+                const card = document.createElement('div');
+                card.className = 'person-card';
+                card.dataset.name = person.name.toLowerCase();
+                card.dataset.category = person.category;
+                card.dataset.details = (person.dietDetails || '').toLowerCase();
+                card.id = generateId(person.name);
+
+                const categoryClass = person.category === 'Low Meat' ? 'cat-low-meat' : 'cat-high-meat';
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="person-name">${person.name}</span>
+                        <span class="person-age">${person.age} years</span>
+                    </div>
+                    <div>
+                        <span class="card-category ${categoryClass}">${person.category}</span>
+                    </div>
+                    <div class="card-details">
+                        ${person.dietDetails || 'No specific diet details available.'}
+                    </div>
+                    <div class="card-meta">
+                        Cause of death: ${person.cause_of_death || 'Not specified'}
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+
+            setupSearchAndFilter();
+        }
+
+        function setupSearchAndFilter() {
+            const searchInput = document.getElementById('search-input');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const cards = document.querySelectorAll('.person-card');
+
+            function filter() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const activeBtn = document.querySelector('.filter-btn.active');
+                const filterCategory = activeBtn.dataset.filter;
+
+                cards.forEach(card => {
+                    const name = card.dataset.name;
+                    const details = card.dataset.details;
+                    const category = card.dataset.category;
+
+                    const matchesSearch = name.includes(searchTerm) || details.includes(searchTerm);
+                    const matchesCategory = filterCategory === 'all' || category === filterCategory;
+
+                    if (matchesSearch && matchesCategory) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+            }
+
+            searchInput.addEventListener('input', filter);
+
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    filter();
+                });
+            });
+        }
+
+        function scrollToPerson(name) {
+            const id = generateId(name);
+            const card = document.getElementById(id);
+
+            if (card) {
+                // Ensure the card is visible (if filtered out)
+                card.classList.remove('hidden');
+
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Add highlight animation
+                card.classList.remove('highlight');
+                void card.offsetWidth; // Trigger reflow
+                card.classList.add('highlight');
+            }
+        }
+        // Modal Logic
+        const modal = document.getElementById('suggestion-modal');
+        const suggestBtn = document.getElementById('suggest-btn');
+        const closeBtn = document.getElementById('close-modal');
+        const cancelBtn = document.getElementById('cancel-btn');
+
+        if (suggestBtn && modal) {
+            suggestBtn.addEventListener('click', () => {
+                modal.showModal();
+            });
+
+            const closeModal = () => {
+                modal.close();
+            };
+
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+            // Close on click outside
+            modal.addEventListener('click', (e) => {
+                const dialogDimensions = modal.getBoundingClientRect();
+                if (
+                    e.clientX < dialogDimensions.left ||
+                    e.clientX > dialogDimensions.right ||
+                    e.clientY < dialogDimensions.top ||
+                    e.clientY > dialogDimensions.bottom
+                ) {
+                    modal.close();
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
